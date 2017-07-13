@@ -1,0 +1,316 @@
+# user_management.lib
+: "
+Library File 
+	for user management operations on local and remote nodes.
+
+Included Methods:
+	check_ids_are_available
+		- checks that uid and gid are available
+
+	remote_copy_user_rsa_key
+		- copeis local rsa for user to remote host
+		- only to ~/.ssh/authorized_keys
+
+	create_user_rsa_key
+		- create the local rsa key for the user
+
+	add_remote_sudoers_policy
+		- copeis a sudoers policy into the /etc/sudoers.d/ directory
+		- requires local copy of the policy
+
+	add_sudoers_policy
+		- copy the sudoers policy to the local /etc/sudoers.d/ directory
+
+	add_user_to_remote_group
+		- adds a user to a group on remote host
+
+	add_user_to_group
+		- adds a user to a local group
+
+	add_user
+		- adds the user and sets their password
+
+	add_remote_user
+		- adds the user to remote host and sets password
+
+	add_group
+		- add a group to the local host
+
+	add_remote_group
+		- add a group to a remote host
+		
+"
+
+check_ids_are_available()
+{
+	UUIDNUMBER="$1"
+	# run remote
+	if [ ! -z "$2" ]; then
+		REMOTE_IP="${2}"
+		# another idea
+		sshpass -e ssh -y -o StrictHostKeyChecking=no "${REMOTE_IP}" \
+			/bin/egrep -qe ":${UUIDNUMBER}:" /etc/passwd && \
+			/bin/egrep -qe ":${UUIDNUMBER}:" /etc/group
+		if [[ "$?" -eq 0 ]]; then
+			return 1
+		else
+			return 0
+		fi
+	# run local
+	else
+		/bin/egrep -qe ":${UUIDNUMBER}:" /etc/passwd && /bin/egrep -qe ":${UUIDNUMBER}:" /etc/group
+		if [[ "$?" -eq 0 ]]; then
+			return 1
+		else
+			return 0
+		fi
+	fi
+}
+
+remote_copy_user_rsa_key()
+{
+	UAPPNAME="${1}"
+	KEY_NAME="/home/${UAPPNAME}/.ssh/${2}.pub"
+	REMOTE_IP="${3}"
+	UPASSWORD="${4}"
+	
+	/bin/echo "${SSHPASS}" | sudo -S [ -f "${KEY_NAME}" ]
+	if [[ ! "$?" -eq 0 ]]; then
+		echo "No RSA key ${KEY_NAME} to add to ${REMOTE_IP}"
+		return 1
+	else
+
+		# echo "check remote authorized_keys file exists ......"
+		sshpass -e ssh -y -o StrictHostKeyChecking=no "${REMOTE_IP}" \
+			"/bin/echo \"${SSHPASS}\" | sudo -S [ -f \"/home/${UAPPNAME}/.ssh/authorized_keys\" ]"
+		if [[ ! "$?" -eq 0 ]]; then
+			echo "add dir and or files ...."
+			sshpass -e ssh -y -o StrictHostKeyChecking=no "${REMOTE_IP}" /bin/bash <<-EOF
+				/bin/echo "${SSHPASS}" | sudo -S [ -d "/home/${UAPPNAME}/.ssh" ]
+				if [ ! "$?" -eq 0 ]; then
+					/bin/echo "${SSHPASS}" | sudo -S mkdir "/home/${UAPPNAME}/.ssh"
+				fi
+				/bin/echo "${SSHPASS}" | sudo -S touch "/home/${UAPPNAME}/.ssh/authorized_keys"
+				/bin/echo "${SSHPASS}" | sudo -S chown -R "${UAPPNAME}":"${UAPPNAME}" "/home/${UAPPNAME}/.ssh"
+				/bin/echo "${SSHPASS}" | sudo -S chmod 0700 "/home/${UAPPNAME}/.ssh"
+				/bin/echo "${SSHPASS}" | sudo -S chmod 0600 "/home/${UAPPNAME}/.ssh/authorized_keys"
+			EOF
+		fi
+
+		/bin/echo ${SSHPASS} | sudo -S -u "${UAPPNAME}" /bin/bash <<-EOF
+			export SSHPASS="${UPASSWORD}"
+			sshpass -e ssh-copy-id -i "${KEY_NAME}" -o StrictHostKeyChecking=no "${UAPPNAME}"@"${REMOTE_IP}"
+		EOF
+
+		if [[ ! "$?" -eq 0 ]]; then
+			return 1			
+		fi
+
+		return 0
+	fi
+}
+
+create_user_rsa_key()
+{
+	UAPPNAME="$1"
+	KEY_NAME="$2"
+	KEY_COMMENT="$3"
+
+	if [[ -d "/home/${UAPPNAME}" ]]; then
+		/bin/echo "${SSHPASS}" | sudo -S [ -f "/home/${UAPPNAME}/.ssh/${KEY_NAME}.pub" ]
+		if [[ "$?" -eq 0 ]]; then
+			/bin/echo "key already exists"
+			return 0
+		else
+			/bin/echo "${SSHPASS}" | sudo -S [ -d "/home/${UAPPNAME}/.ssh" ]		
+			if [[ ! "$?" -eq 0 ]]; then
+				/bin/echo "${SSHPASS}" | sudo -S mkdir -p /home/${UAPPNAME}/.ssh
+			fi
+			/bin/echo "sudo make rsa key"
+			/bin/echo "${SSHPASS}" | sudo -S /bin/bash <<-EOF
+				ssh-keygen -b 4096 -t rsa -f "/home/${UAPPNAME}/.ssh/${KEY_NAME}" -q -N "" -C "${KEY_COMMENT}"
+				/bin/echo 'IdentityFile /home/${UAPPNAME}/.ssh/${KEY_NAME}' > /home/${UAPPNAME}/.ssh/config
+				chown "${UAPPNAME}":"${UAPPNAME}" -R "/home/${UAPPNAME}/.ssh"
+				chmod 600 "/home/${UAPPNAME}/.ssh/config"
+			EOF
+		fi
+		return 0
+	else
+		/bin/echo "User ${UAPPNAME} Needs a home directory ....."
+		return 1
+	fi
+}
+
+add_remote_sudoers_policy()
+{
+	POLICY_NAME="$1"
+	POLICY_FILE="$2"
+	REMOTE_IP="$3"
+	FILE=/etc/sudoers.d/"${POLICY_NAME}"
+
+	# create or write new file on romote host for sudoers policy
+	/bin/echo "Adding sudoers policy ${POLICY_NAME} to ${REMOTE_IP} ....."
+
+	sshpass -e scp -o StrictHostKeyChecking=no "${POLICY_FILE}" "${REMOTE_IP}:/tmp/${POLICY_NAME}"
+	
+	sshpass -e ssh -y -o StrictHostKeyChecking=no "${REMOTE_IP}" /bin/bash <<-EOF
+		
+		if [ -f "${FILE}" ]; then
+			echo "${SSHPASS}" | sudo -S rm -f "${FILE}"
+		fi
+
+		echo "${SSHPASS}" | sudo -S chown root:root /tmp/"${POLICY_NAME}"
+		echo "${SSHPASS}" | sudo -S chmod 0440 /tmp/"${POLICY_NAME}"
+		echo "${SSHPASS}" | sudo -S mv /tmp/"${POLICY_NAME}" "${FILE}"
+	EOF
+}
+
+add_sudoers_policy()
+{
+	POLICY_NAME="$1"
+	POLICY_FILE="$2"
+	FILE=/etc/sudoers.d/"${POLICY_NAME}"
+
+	/bin/echo "Adding sudoers policy ${POLICY_NAME} to localhost ....."
+
+	if [ -f "${FILE}" ]; then
+		echo "${SSHPASS}" | sudo -S rm -f "${FILE}"
+	fi
+
+	cp "${POLICY_FILE}" /tmp/"${POLICY_NAME}"
+	echo "${SSHPASS}" | sudo -S /bin/bash <<-EOF
+		chown root:root /tmp/"${POLICY_NAME}"
+		chmod 0440 /tmp/"${POLICY_NAME}"
+		mv /tmp/"${POLICY_NAME}" "${FILE}"
+	EOF
+}
+
+add_user_to_remote_group()
+{
+	UAPPNAME="$1"
+	GRPNAME="$2"
+	REMOTE_IP="$3"
+	
+	sshpass -e ssh -y -o StrictHostKeyChecking=no "$REMOTE_IP" \
+		"/bin/egrep -e '^${GRPNAME}:' /etc/group | /bin/egrep -q -e ':${UAPPNAME}'"
+	if [ $? -eq 0 ]; then
+		/bin/echo "User ${UAPPNAME} is already member of ${GRPNAME} on ${REMOTE_IP} ....."
+		return 1
+	else
+		/bin/echo "Adding ${UAPPNAME} to group ${GRPNAME} on ${REMOTE_IP} ....."
+		sshpass -e ssh -y -o StrictHostKeyChecking=no "$REMOTE_IP" /bin/bash <<-EOF
+			/bin/echo "${SSHPASS}" | sudo -S  /sbin/usermod --append --groups "${GRPNAME}" "${UAPPNAME}"
+		EOF
+		return 0
+	fi
+}
+
+add_user_to_group()
+{
+	UAPPNAME="$1"
+	GRPNAME="$2"
+
+	/bin/egrep -e "^${GRPNAME}:" /etc/group | /bin/egrep -q -e ":${UAPPNAME}"
+	if [ $? -eq 0 ]; then
+		/bin/echo "User ${UAPPNAME} is already member of ${GRPNAME} ....."
+		return 1
+	else
+		/bin/echo "Adding ${UAPPNAME} to group ${GRPNAME} ....."
+		/bin/echo "${SSHPASS}" | sudo -S /sbin/usermod --append --groups "${GRPNAME}" "${UAPPNAME}"
+		return 0
+	fi
+}
+
+add_user()
+{
+	UAPPNAME="$1"
+	UAPPNAMEPW="$2"
+	UUIDNUMBER="$3"
+	DESCRIPTION="$4"
+	
+	/bin/egrep -q -e "^${UAPPNAME}:" /etc/passwd
+	if [ $? -eq 0 ]; then
+		/bin/echo "NO Action Required exists: $UAPPNAME"
+		return 1
+	else
+		/bin/echo "Adding User:  $UAPPNAME"
+
+		add_group "${UUIDNUMBER}" "${UAPPNAME}"
+
+		/bin/echo "${SSHPASS}" | sudo -S /bin/bash <<-EOF
+			/usr/sbin/useradd \
+				-u "${UUIDNUMBER}" \
+				-g "${UUIDNUMBER}" \
+				-m \
+				-c "${DESCRIPTION}" "${UAPPNAME}"
+				
+			/bin/echo "${UAPPNAME}":"${UAPPNAMEPW}" | /usr/sbin/chpasswd
+		EOF
+		return 0
+	fi
+}
+
+add_remote_user()
+{
+	UAPPNAME="$1"
+	UAPPNAMEPW="$2"
+	UUIDNUMBER=$3
+	DESCRIPTION="$4"
+	REMOTE_IP=$5
+
+	sshpass -e ssh -y -o StrictHostKeyChecking=no "$REMOTE_IP" "/bin/egrep -q -i '^${UAPPNAME}:' /etc/passwd"
+	if [ $? -eq 0 ]; then
+		/bin/echo "NO Action Required, $UAPPNAME already exists ....."
+		return 1
+	else
+		/bin/echo "Adding Remote User: $UAPPNAME to $REMOTE_IP ....."
+		sshpass -e ssh -y -o StrictHostKeyChecking=no "${REMOTE_IP}" /bin/bash <<-EOF
+			/bin/echo "${SSHPASS}" | sudo -S /usr/sbin/groupadd -g $UUIDNUMBER $UAPPNAME
+			/bin/echo "${SSHPASS}" | sudo -S /usr/sbin/useradd \
+				-u "${UUIDNUMBER}" \
+				-g "${UUIDNUMBER}" \
+				-m \
+				-c "${DESCRIPTION}" "${UAPPNAME}"
+			
+			/bin/echo "${SSHPASS}" | sudo -S sh \
+				-c "/bin/echo '"${UAPPNAME}":"${UAPPNAMEPW}"' | /usr/sbin/chpasswd"
+		EOF
+		# Might want to adjust user home directory permissions (wait and see if)
+		return 0
+	fi
+}
+
+add_group()
+{
+	GIDNUMBER="$1"
+	GRPNAME="$2"
+
+	/bin/egrep -q -i "^${GRPNAME}:" /etc/passwd
+	if [ $? -eq 0 ]; then
+		/bin/echo "Group $GRPNAME already exists ....."
+		return 1
+	else
+		/bin/echo "Adding Group: $GRPNAME ....."
+		/bin/echo "${SSHPASS}" | sudo -S /usr/sbin/groupadd -g ${GIDNUMBER} ${GRPNAME}
+		return 0
+	fi
+}
+
+add_remote_group()
+{
+	GIDNUMBER="$1"
+	GRPNAME="$2"
+	REMOTE_IP="$3"
+
+	/bin/egrep -q -i "^${GRPNAME}:" /etc/passwd
+	if [ $? -eq 0 ]; then
+		/bin/echo "Group $GRPNAME already exists ....."
+		return 1        
+	else
+		/bin/echo "Adding Group: $GRPNAME ....."
+		sshpass -e ssh -y -o StrictHostKeyChecking=no "${REMOTE_IP}" /bin/bash <<-EOF 
+			echo "${SSHPASS}" | sudo -S /usr/sbin/groupadd -g "${GIDNUMBER}" "${GRPNAME}"
+		EOF
+		return 0
+	fi  
+}

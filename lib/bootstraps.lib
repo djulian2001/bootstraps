@@ -1,0 +1,91 @@
+# bootstraps.lib
+: '
+library file bootstraps
+
+Description:
+	This is a script that takes in command line args and sets up an ansible 
+	controller node.  Following the instructions from the ansible docs we will
+	be using the pip install method.
+
+	Why pip?
+		Pip will have the latest core modules.
+		The source code will not have been changed and module behavior should
+			follow the docs
+		Its very easy to do
+		If down the road, ansible versions have to be coupled to deployments we
+			can easily manage ansible versions using python module virtualenv 
+			and the virtualenv wrapper 
+
+Expected Results:
+	The ansible tool will be installed.
+	The deployment user (normally ansible) will be created on the control server
+	The deployment user will be given sudo privileges on the control server 
+		- file: /etc/sudoers
+	The deployment user will be created on all of the remote hosts
+	The deployment user will be given sudo privileges using the /etc/sudoers file
+	The deployment
+
+user scope:
+	This script has to be run by a user with sudo privileges.
+	The user has to have sudo privileges on the remote hosts.
+
+bootstrap dependencies:
+	sshpass
+	epel
+
+ansible dependencies:
+	python-pip 
+	python-devel 
+	openssl-devel.x86_64
+
+other dependencies:
+	git
+
+
+sources: 
+http://docs.ansible.com/ansible/intro_installation.html#latest-releases-via-pip
+
+'
+
+/bin/echo "Starting the script .... "
+source user_management.sh
+
+check_env()
+{
+	# check that these env variables are set first	
+	: "${SSHPASS:?Export SSHPASS with admin password, prepend with a space}"
+	: "${REMOTE_USER_PASSWORD:?Export REMOTE_USER_PASSWORD with deployer password, prepend with a space}"
+}
+
+check_setup()
+{
+	# check hosts file exists
+	# check sudoers.d file exists
+}
+
+required_dependencies()
+{
+
+	check_env
+	
+	# enable epel
+	/bin/echo "${SSHPASS}" | sudo -S /bin/bash <<-EOF
+		yum -y -q install epel-release
+		yum --enablerepo=epel -y -q install epel-release
+		yum install -y -q git sshpass
+	EOF
+}
+
+
+ansible_dependencies()
+{
+	# setup and install ansible with pip..
+	echo "INSTALL ansible using pip..."
+	/bin/echo "${SSHPASS}" | sudo -S /bin/bash <<-EOF
+		yum -y -q install python-pip python-devel openssl-devel.x86_64
+		pip -q install --upgrade pip
+		pip -q install ansible
+		pip -q install --upgrade ansible
+	EOF
+}
+
