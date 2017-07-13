@@ -1,4 +1,45 @@
 # user_management.lib
+: "
+Library File 
+	for user management operations on local and remote nodes.
+
+Included Methods:
+	check_ids_are_available
+		- checks that uid and gid are available
+
+	remote_copy_user_rsa_key
+		- copeis local rsa for user to remote host
+		- only to ~/.ssh/authorized_keys
+
+	create_user_rsa_key
+		- create the local rsa key for the user
+
+	add_remote_sudoers_policy
+		- copeis a sudoers policy into the /etc/sudoers.d/ directory
+		- requires local copy of the policy
+
+	add_sudoers_policy
+		- copy the sudoers policy to the local /etc/sudoers.d/ directory
+
+	add_user_to_remote_group
+		- adds a user to a group on remote host
+
+	add_user_to_group
+		- adds a user to a local group
+
+	add_user
+		- adds the user and sets their password
+
+	add_remote_user
+		- adds the user to remote host and sets password
+
+	add_group
+		- add a group to the local host
+
+	add_remote_group
+		- add a group to a remote host
+		
+"
 
 check_ids_are_available()
 {
@@ -142,8 +183,6 @@ add_sudoers_policy()
 		chmod 0440 /tmp/"${POLICY_NAME}"
 		mv /tmp/"${POLICY_NAME}" "${FILE}"
 	EOF
-
-
 }
 
 add_user_to_remote_group()
