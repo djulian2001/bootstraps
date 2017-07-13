@@ -1,0 +1,63 @@
+#!/bin/bash
+
+source lib/user_management
+grp_id=9999999
+
+# add_group $((grp_id-1)) os_deployer
+
+# add_remote_sudoers_policy "os_deployer" "/vagrant/bootstrap_ansible/centos7x/sudoers.d/os_deployer" "192.168.34.61"
+# add_sudoers_policy "os_deployer" "/vagrant/bootstrap_ansible/centos7x/sudoers.d/os_deployer"
+
+# add_remote_group $((grp_id-1)) os_deployer "192.168.34.61"
+
+
+	# UAPPNAME="$1"
+ #    UAPPNAMEPW="${ANSIBLE_PASSWORD}"
+ #    UUIDNUMBER=$2
+ #    DESCRIPTION="$3"
+ #    REMOTE_IP=$4
+
+# KEY=$(/bin/echo "${SSHPASS}" | sudo -S cat "/home/pete/.ssh/pete_rsa.pub")
+# /bin/echo "${SSHPASS}" | sudo -S /bin/grep -q "${KEY}" "/home/pete/.ssh/pete_rsa.pub"
+
+# sshpass -e ssh -y "192.168.34.61" "/bin/echo \"${SSHPASS}\" | sudo -S /bin/grep -q \"${KEY}\" \"/home/pete/.ssh/authorized_keys\""
+# sshpass -e ssh -y "192.168.34.61" "/bin/echo \"${SSHPASS}\" | sudo -S cat \"/home/pete/.ssh/authorized_keys\""
+
+
+# export ANSIBLE_PASSWORD=chuck
+# add_remote_user "pete" "${ANSIBLE_PASSWORD}" "9999" "test user pete" "192.168.34.61"
+# add_user "chuck" "${ANSIBLE_PASSWORD}" "9998" "test user chuck"
+create_user_rsa_key "pete" "pete_rsa" "pete@192.168.34.60 rsa key 2"
+# echo "$?"
+remote_copy_user_rsa_key "pete" "pete_rsa" "192.168.34.61" "pete"
+# echo "$?"
+# add_user_to_group ansible os_deployer
+# add_user_to_remote_group vagrant ansible "192.168.34.61"
+
+# check_uid_is_available "$1" "192.168.34.61"
+# check_ids_are_available "$1"
+
+# /bin/egrep -qe ':"${1}":' /etc/passwd
+# if [[ $? -eq 0 ]]; then
+# 	return 0
+# fi
+# /bin/egrep -qe ':"${1}":' /etc/group
+# if [[ $? -eq 0 ]]; then
+# 	return 0
+# fi
+
+
+# /bin/egrep -e ":${1}:" /etc/passwd
+# /bin/egrep -e ":${1}:" /etc/passwd
+# /bin/egrep -e ":${1}:" /etc/group 
+# echo "$?"
+
+ 
+
+
+# if [[ "$?" -eq 0 ]]; then
+# 	echo "$?"
+# else
+# 	echo "$?"
+# fi
+
