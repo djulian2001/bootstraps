@@ -1,0 +1,85 @@
+---
+- hosts: all
+  tasks:
+    - set_fact: create_user='ansible'
+    - set_fact: create_pass='ansible'
+    - set_fact: rsa_key_name='cluster_rsa'
+
+- hosts: controller
+  become: true
+  gather_facts: false
+  tasks:
+  - name: add the ansible user to the controller
+    user:
+      name: "{{ create_user }}"
+      append: yes
+      state: present
+      generate_ssh_key: yes
+      ssh_key_bits: 4048
+      ssh_key_file: "/home/{{ create_user }}/.ssh/{{ rsa_key_name }}"
+      ssh_key_type: rsa
+  
+  - name: Set the .ssh/config for the user
+    template:
+      src: config.j2
+      dest: "/home/{{ create_user }}/.ssh/config"
+      owner: "{{ create_user }}"
+      group: "{{ create_user }}"
+      mode: 0440
+
+  - name: testing key copy 
+    copy:
+      remote_src: true
+      src: "/home/{{ create_user }}/.ssh/{{ rsa_key_name }}.pub"
+      dest: "."
+      mode: 0666
+  
+  - name: vagrant user to ansible group
+    user:
+      name: vagrant
+      append: yes
+      groups: "{{ create_user }}" 
+
+
+- hosts: compute:controller
+  become: true
+  gather_facts: false
+  tasks:
+  - name: add the group for deployers
+    group:
+      name: os_deployer
+      gid: 9999998
+      state: present
+      system: yes
+
+  - name: add the user
+    user:
+      name: "{{ create_user }}"
+      password: "{{ create_pass }}"
+      append: yes
+      comment: "kicking off greatness"
+      groups: os_deployer
+      state: present
+
+  - name: add the sudoers policy for the deployers
+    copy:
+      src: ./centos7x/sudoers.d/os_deployer
+      dest: /etc/sudoers.d/os_deployer
+      owner: root
+      group: root
+      mode: 0440
+      validate: 'visudo -cf %s'
+
+- hosts: compute
+  gather_facts: false
+  become: true
+  tasks:
+  - name:
+    authorized_key:
+      user: "{{ create_user }}"
+      state: present
+      exclusive: yes
+      manage_dir: yes
+      key: "{{ lookup('file', '{{ rsa_key_name }}.pub') }}"
+      path: "/home/{{ create_user }}/.ssh/authorized_keys"
+
