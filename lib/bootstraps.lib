@@ -47,33 +47,40 @@ http://docs.ansible.com/ansible/intro_installation.html#latest-releases-via-pip
 
 '
 
-/bin/echo "Starting the script .... "
-source user_management.sh
-
 check_env()
 {
 	# check that these env variables are set first	
-	: "${SSHPASS:?Export SSHPASS with admin password, prepend with a space}"
-	: "${REMOTE_USER_PASSWORD:?Export REMOTE_USER_PASSWORD with deployer password, prepend with a space}"
+	
+	: "${ SSHPASS:?Export SSHPASS with admin password, prepend with a space }"
+
+	if [[ ! "${1}" -eq "init" ]]; then
+		: "${REMOTE_USER_PASSWORD:?Export REMOTE_USER_PASSWORD with deployer password, prepend with a space}"
+	fi
 }
 
 check_setup()
 {
+	echo "check setup ....."
+	export HISTCONTROL="$HISTCONTROL:ignorespace"
 	# check hosts file exists
 	# check sudoers.d file exists
 }
 
 required_dependencies()
 {
+	echo "installing dependencies ...."
+	check_setup
+	check_env "init"
 
-	check_env
-	
+	if [ ! "$?" -eq 0 ]; then
+		env_instructions
+	fi
+
 	# enable epel
-	/bin/echo "${SSHPASS}" | sudo -S /bin/bash <<-EOF
-		yum -y -q install epel-release
-		yum --enablerepo=epel -y -q install epel-release
-		yum install -y -q git sshpass
-	EOF
+	echo "installing with yum  ...."
+	/bin/echo "${SSHPASS}" | sudo -S yum -y install epel-release
+	/bin/echo "${SSHPASS}" | sudo -S yum --enablerepo=epel -y install epel-release
+	/bin/echo "${SSHPASS}" | sudo -S yum install -y git sshpass
 }
 
 
@@ -81,11 +88,34 @@ ansible_dependencies()
 {
 	# setup and install ansible with pip..
 	echo "INSTALL ansible using pip..."
-	/bin/echo "${SSHPASS}" | sudo -S /bin/bash <<-EOF
-		yum -y -q install python-pip python-devel openssl-devel.x86_64
-		pip -q install --upgrade pip
-		pip -q install ansible
-		pip -q install --upgrade ansible
-	EOF
+	/bin/echo "${SSHPASS}" | sudo -S yum -y install python-pip python-devel openssl-devel.x86_64
+	/bin/echo "${SSHPASS}" | sudo -S pip install --upgrade pip
+	/bin/echo "${SSHPASS}" | sudo -S pip install ansible
+	/bin/echo "${SSHPASS}" | sudo -S pip install --upgrade ansible
 }
 
+add_hosts_to_known_hosts()
+{
+	# FUTURE TASK!!!
+	echo "NEED TO ADD THIS!!!!"
+	echo "hosts inventory need to be added to the known hosts to boot strap with?"
+	echo "work around is add 'StrictHostKeyChecking no' to admins .ssh/config file"
+
+}
+
+
+env_instructions()
+{
+
+	/usr/bin/cat <<-EOF
+		Usage Instructions:
+			-- prepend ANY cmds with a space to avoid writing to history
+			
+			-- set enviornment variables:
+			--	* export SSHPASS="...."
+			--	* export DEPLOY_USER_PASSWORD="...."
+				* prepend with a space
+
+			-- Re-Run the bash script init.sh
+	EOF
+}
