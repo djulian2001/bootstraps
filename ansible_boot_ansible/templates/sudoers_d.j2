@@ -1,0 +1,8 @@
+## Remote server set group to ALL Levels of access from limited host.
+## Host_Alias    CONTROLLER = {{ deployment_network }}  # 192.168.34.0/24
+## %{{ deployment_scope }} CONTROLLER=(ALL) NOPASSWD: ALL
+## Might want to look at using host_alias, would required more node configurations
+## such as fqdn if hostname "does not return a fully qualified host name" 
+
+## simpler solution open:
+%{{ deployment_scope }} ALL=(ALL) NOPASSWD: ALL
