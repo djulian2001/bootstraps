@@ -1,9 +1,13 @@
 ---
 - hosts: all
   tasks:
-    - set_fact: create_user='ansible'
-    - set_fact: create_pass='ansible'
-    - set_fact: rsa_key_name='cluster_rsa'
+    - include_vars: "locker_talk.yaml"
+    - set_fact: deploy_password='{{ deploy_password }}'
+    - set_fact: deploy_user='ansible'
+    - set_fact: deploy_rsa_key='cluster_rsa'
+    - set_fact: deployment_scope='os_deployer'
+    - set_fact: deployment_group_id='999999'
+    - set_fact: deployment_network='192.168.34.0/24'
 
 - hosts: controller
   become: true
@@ -11,60 +15,60 @@
   tasks:
   - name: add the ansible user to the controller
     user:
-      name: "{{ create_user }}"
+      name: "{{ deploy_user }}"
       append: yes
       state: present
       generate_ssh_key: yes
       ssh_key_bits: 4048
-      ssh_key_file: "/home/{{ create_user }}/.ssh/{{ rsa_key_name }}"
+      ssh_key_file: "/home/{{ deploy_user }}/.ssh/{{ deploy_rsa_key }}"
       ssh_key_type: rsa
   
   - name: Set the .ssh/config for the user
     template:
-      src: config.j2
-      dest: "/home/{{ create_user }}/.ssh/config"
-      owner: "{{ create_user }}"
-      group: "{{ create_user }}"
+      src: ./templates/ssh_config.j2
+      dest: "/home/{{ deploy_user }}/.ssh/config"
+      owner: "{{ deploy_user }}"
+      group: "{{ deploy_user }}"
       mode: 0440
 
   - name: testing key copy 
     copy:
       remote_src: true
-      src: "/home/{{ create_user }}/.ssh/{{ rsa_key_name }}.pub"
-      dest: "."
+      src: "/home/{{ deploy_user }}/.ssh/{{ deploy_rsa_key }}.pub"
+      dest: "./tmp/{{ deploy_rsa_key }}.pub"
       mode: 0666
   
   - name: vagrant user to ansible group
     user:
       name: vagrant
       append: yes
-      groups: "{{ create_user }}" 
+      groups: "{{ deploy_user }}" 
 
 
 - hosts: compute:controller
   become: true
   gather_facts: false
   tasks:
-  - name: add the group for deployers
+  - name: add the group for the scoped deployers
     group:
-      name: os_deployer
-      gid: 9999998
+      name: "{{ deployment_scope }}"
+      gid: "{{ deployment_group_id }}"
       state: present
       system: yes
 
   - name: add the user
     user:
-      name: "{{ create_user }}"
-      password: "{{ create_pass }}"
+      name: "{{ deploy_user }}"
+      password: "{{ deploy_password }}"
       append: yes
       comment: "kicking off greatness"
-      groups: os_deployer
+      groups: "{{ deployment_scope }}"
       state: present
 
   - name: add the sudoers policy for the deployers
-    copy:
-      src: ./centos7x/sudoers.d/os_deployer
-      dest: /etc/sudoers.d/os_deployer
+    template:
+      src: ./templates/sudoers_d.j2
+      dest: /etc/sudoers.d/{{ deployment_scope }}
       owner: root
       group: root
       mode: 0440
@@ -76,10 +80,10 @@
   tasks:
   - name:
     authorized_key:
-      user: "{{ create_user }}"
+      user: "{{ deploy_user }}"
       state: present
       exclusive: yes
       manage_dir: yes
-      key: "{{ lookup('file', '{{ rsa_key_name }}.pub') }}"
-      path: "/home/{{ create_user }}/.ssh/authorized_keys"
+      key: "{{ lookup('file', './tmp/{{ deploy_rsa_key }}.pub') }}"
+      path: "/home/{{ deploy_user }}/.ssh/authorized_keys"
 
