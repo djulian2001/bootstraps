@@ -1,0 +1,47 @@
+#!/bin/bash
+
+DIR="${BASH_SOURCE%/*}"
+if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
+
+# import libraries:
+source "$DIR/lib/user_management.lib"
+source "$DIR/lib/app_usage_functions.lib"
+
+usage()
+{
+	set_yellow
+	cat <<-EOF
+		usage: "${0}" [options] ...
+		bootstraps ansible
+
+		OPTIONS:
+			- h  help
+			- c  check uid and gid are available on hosts
+		
+		REQUIRED:
+			- n  the ansible users name
+			- u  uid and gid for the ansible user being add
+			- k  the rsa key name for the ansible user
+			- s  sudoers scoped service via group member, using the sudoers.d
+			- g  gid for the service group
+
+	EOF
+}
+
+while getopts "hcn:u:k:s:g:" OPTION; do
+	#statements
+	case OPTION in
+		h )
+			usage
+			exit 1
+			;;
+		c )
+			unset CHECK_UID_GID
+			check_ids_on_hosts
+			CHECK_UID_GID
+			;;
+
+	esac
+done
+
+

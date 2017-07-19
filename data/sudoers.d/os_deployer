@@ -1,0 +1,4 @@
+## Remote server set group to ALL Levels of access from limited host.
+#Host_Alias    CONTROLLER = 192.168.34.60
+#%os_deployer CONTROLLER=(ALL) NOPASSWD: ALL
+%os_deployer ALL=(ALL) NOPASSWD: ALL
