@@ -1,8 +1,0 @@
-/bin/echo "INSTRUCTION: prepend cmds with a space to avoid writing to history file."
-export HISTCONTROL="$HISTCONTROL:ignorespace"
-
-/bin/echo "INSTRUCTION: set a shell enviornment variables SSHPASS ANSIBLE_PASSWORD, don't forget to prepend with a space"
-/bin/echo "INSTRUCTION: export SSHPASS=admin_password"
-/bin/echo "INSTRUCTION: export ANSIBLE_PASSWORD=ansible_password"
-/bin/echo "INSTRUCTION: Run the bash script bootstrap_ansible.sh deploy_user_name u_user_id u_group_id"
-/bin/echo "INSTRUCTION: Add all of the remote ip addresses to the hosts file"
