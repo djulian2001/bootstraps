@@ -52,11 +52,7 @@ source "$DIR/lib/app_functions.lib"
 check_env()
 {
 	# check that these env variables are set first
-	echo "${HISTCONTROL}"
-	echo "${SSHPASS}"
-	echo "${ANSIBLE_VAULT_PASSWORD_FILE}"
 	contains "${HISTCONTROL}" "ignorespace"
-	echo "$?"
 	
 	: "${SSHPASS:?Export SSHPASS with admin password, prepend with a space}"
 	: "${ANSIBLE_VAULT_PASSWORD:?Export ANSIBLE_VAULT_PASSWORD deployer password, prepend with a space}"
@@ -92,29 +88,30 @@ required_dependencies()
 ansible_dependencies()
 {
 
-	TARGET_KEY="PasswordAuthentication"
-	REPLACEMENT_VALUE="yes"
+
+	echo "SSH enable password Authentication ...."
+	TARGET_KEY="PasswordAuthentication no"
+	REPLACE_WITH="PasswordAuthentication yes"
 	CONFIG_FILE="/etc/ssh/sshd_config"
-	TEST_CONFIG_SET="${TARGET_KEY} ${REPLACEMENT_VALUE}"
 
-	# /usr/bin/grep '^PasswordAuthentication yes' "/etc/ssh/sshd_config" | grep -v grep
+	if [ ! $(/bin/echo "${SSHPASS}" | sudo -S /usr/bin/grep "^${REPLACE_WITH}" "${CONFIG_FILE}") ]; then
+		/bin/echo "${SSHPASS}" | sudo -S sed --copy --in-place "s/\(^${TARGET_KEY}\).*/${REPLACE_WITH}/" "${CONFIG_FILE}" 
 
-	/bin/echo "${SSHPASS}" | sudo -S /usr/bin/grep '^"${TEST_CONFIG_SET}"' "${CONFIG_FILE}" | grep -v grep
-	if [[ ! "$?" -eq 0 ]] ; then
-		/bin/echo "${SSHPASS}" | sudo -S sed --copy --in-place "s/\($TARGET_KEY * *\).*/\1$REPLACEMENT_VALUE/" $CONFIG_FILE 
 		/bin/echo "${SSHPASS}" | sudo -S service sshd restart
 	fi
 
-
 	# setup and install ansible with pip..
-	echo "INSTALL ansible using pip..."
+	echo "INSTALL ansible using pip ...."
 	/bin/echo "${SSHPASS}" | sudo -S yum -y install python-pip python-devel openssl-devel.x86_64
 	/bin/echo "${SSHPASS}" | sudo -S pip install --upgrade pip
 	/bin/echo "${SSHPASS}" | sudo -S pip install ansible
 	/bin/echo "${SSHPASS}" | sudo -S pip install --upgrade ansible
 	
-	/bin/echo "${ANSIBLE_VAULT_PASSWORD}" >> "${ANSIBLE_VAULT_PASSWORD_FILE}"
-	/usr/bin/chmod 0440 "${ANSIBLE_VAULT_PASSWORD_FILE}"
+	if [[ ! -f "${ANSIBLE_VAULT_PASSWORD_FILE}" ]]; then
+		/usr/bin/touch "${ANSIBLE_VAULT_PASSWORD_FILE}"
+		/bin/echo "${ANSIBLE_VAULT_PASSWORD}" > "${ANSIBLE_VAULT_PASSWORD_FILE}"
+		/usr/bin/chmod 0440 "${ANSIBLE_VAULT_PASSWORD_FILE}"
+	fi
 
 	if [[ "$?" -eq 0 ]]; then
 		return 0

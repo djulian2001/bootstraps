@@ -1,5 +1,5 @@
 export HISTCONTROL="$HISTCONTROL:ignorespace"
-export ANSIBLE_VAULT_PASSWORD_FILE="~/.secret.secret"
+export ANSIBLE_VAULT_PASSWORD_FILE=~/.secret.secret
 
 echo "StrictHostKeyChecking no" >> ~/.ssh/config
 chmod 0400 ~/.ssh/config
