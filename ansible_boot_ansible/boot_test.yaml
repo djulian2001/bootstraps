@@ -2,16 +2,21 @@
 - hosts: all
   tasks:
     - include_vars: "locker_talk.yaml"
+
     - set_fact: deploy_password='{{ deploy_password }}'
     - set_fact: deploy_user='ansible'
     - set_fact: deploy_rsa_key='cluster_rsa'
     - set_fact: deployment_scope='os_deployer'
     - set_fact: deployment_group_id='999999'
     - set_fact: deployment_network='192.168.34.0/24'
+    - set_fact: admin_user='vagrant'
 
 - hosts: controller
   become: true
   gather_facts: false
+  vars:
+    admin_user: 'vagrant'
+
   tasks:
   - name: add the ansible user to the controller
     user:
@@ -31,18 +36,29 @@
       group: "{{ deploy_user }}"
       mode: 0440
 
-  - name: testing key copy 
+  - name: copy the ansible generated public key for lookup resolution 
     copy:
       remote_src: true
       src: "/home/{{ deploy_user }}/.ssh/{{ deploy_rsa_key }}.pub"
       dest: "./tmp/{{ deploy_rsa_key }}.pub"
       mode: 0666
   
-  - name: vagrant user to ansible group
+  - name: add admin user to ansible group
     user:
-      name: vagrant
+      name: "{{ admin_user }}"
       append: yes
       groups: "{{ deploy_user }}" 
+
+  # - name: create the logical directory structure in the home directory
+  # - name: create the /etc/ansible directory
+  # - name: create the /home/ansible/defaults/ directory
+  # - name: symbolic link the /etc/ansible references to /home/ansible/defaults/ directory
+  # IS this a good idea?
+  # so /etc/ansible/ansible.cfg ~ /home/ansible/defaults/_ansible.cfg
+  # so /etc/ansible/hosts ~ /home/ansible/defaults/_hosts/
+  # so /etc/ansible/... ~ /home/ansible/defaults/_...
+
+  # - name: setup the ansible redis service for fact_checking
 
 
 - hosts: compute:controller
