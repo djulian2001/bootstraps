@@ -1,2 +1,4 @@
-ansible_boot_ansible/tmp/**
+ansible_boot_ansible/tmp/*
+!ansible_boot_ansible/tmp/.gitkeep
+
 *.retry
