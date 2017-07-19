@@ -1,0 +1,28 @@
+# app_usage_functions.lib
+
+: "
+General Application Functions
+
+Library of the general purpose
+
+Authors: Lee Reynolds and David Julian
+
+"
+# ascii color codes
+SETYELLOW="\033[;33m"
+
+set_yellow()
+{
+	/bin/echo -n -e "${SETYELLOW}"
+}
+
+contains(){
+	haystack="${1}"
+	needle="${2}"
+
+	if test "${haystack#*${needle}}" != "${haystack}"; then
+		return 0
+	else
+		return 1
+	fi
+}

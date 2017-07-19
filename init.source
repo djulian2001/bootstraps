@@ -1,0 +1,4 @@
+export HISTCONTROL="$HISTCONTROL:ignorespace"
+
+echo "StrictHostKeyChecking no" >> ~/.ssh/config
+chmod 0400 ~/.ssh/config

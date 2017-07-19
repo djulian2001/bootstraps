@@ -47,21 +47,26 @@ http://docs.ansible.com/ansible/intro_installation.html#latest-releases-via-pip
 
 '
 
+source "$DIR/lib/app_functions.lib"
+
 check_env()
 {
-	# check that these env variables are set first	
+	# check that these env variables are set first
+	echo "${HISTCONTROL}"
+	echo "${SSHPASS}"
+	echo "${ANSIBLE_VAULT_PASSWORD_FILE}"
+	contains "${HISTCONTROL}" "ignorespace"
+	echo "$?"
 	
-	: "${ SSHPASS:?Export SSHPASS with admin password, prepend with a space }"
-
-	if [[ ! "${1}" -eq "init" ]]; then
-		: "${REMOTE_USER_PASSWORD:?Export REMOTE_USER_PASSWORD with deployer password, prepend with a space}"
-	fi
+	: "${SSHPASS:?Export SSHPASS with admin password, prepend with a space}"
+	: "${ANSIBLE_VAULT_PASSWORD_FILE:?Export ANSIBLE_VAULT_PASSWORD_FILE with deployer password, prepend with a space}"
 }
 
 check_setup()
 {
-	echo "check setup ....."
-	export HISTCONTROL="$HISTCONTROL:ignorespace"
+	echo "Checking Setup ....."
+	check_env
+
 	# check hosts file exists
 	# check sudoers.d file exists
 }
@@ -70,17 +75,16 @@ required_dependencies()
 {
 	echo "installing dependencies ...."
 	check_setup
-	check_env "init"
-
-	if [ ! "$?" -eq 0 ]; then
-		env_instructions
-	fi
-
 	# enable epel
 	echo "installing with yum  ...."
 	/bin/echo "${SSHPASS}" | sudo -S yum -y install epel-release
 	/bin/echo "${SSHPASS}" | sudo -S yum --enablerepo=epel -y install epel-release
 	/bin/echo "${SSHPASS}" | sudo -S yum install -y git sshpass
+	if [[ "$?" -eq 0 ]]; then
+		return 0
+	else
+		return 1
+	fi
 }
 
 
@@ -92,6 +96,12 @@ ansible_dependencies()
 	/bin/echo "${SSHPASS}" | sudo -S pip install --upgrade pip
 	/bin/echo "${SSHPASS}" | sudo -S pip install ansible
 	/bin/echo "${SSHPASS}" | sudo -S pip install --upgrade ansible
+	
+	if [[ "$?" -eq 0 ]]; then
+		return 0
+	else
+		return 1
+	fi
 }
 
 add_hosts_to_known_hosts()
@@ -109,13 +119,43 @@ env_instructions()
 
 	/usr/bin/cat <<-EOF
 		Usage Instructions:
-			-- prepend ANY cmds with a space to avoid writing to history
-			
-			-- set enviornment variables:
-			--	* export SSHPASS="...."
-			--	* export DEPLOY_USER_PASSWORD="...."
-				* prepend with a space
+		--	Run this script under an ADMIN account with sudo privileges on ALL hosts
+		--	ALL Hosts must allow SSH connections with password
+		-
+		--	First source the init.source to set ${0} running enviornment 
+		-		* appends HISTCONTROL enviornment variable to ignorespace
+		-		* appends "StrictHostKeyChecking no" to ~/.ssh/config
+		-
+		--	Now prepend ANY commands with sensitive information with a space character
+		-
+		--	Set the following enviornment variables:
+		-		* export SSHPASS="...."
+		-			.... ADMIN accounts password
+		-		* export ANSIBLE_VAULT_PASSWORD_FILE="...."
+		-			.... password to decrypt ansible vault file in plain text
+		-			.... create the file and add the decrypt pass phrase to it
+		-		* PREPEND WITH A SPACE
+		-
+		-- Append
 
-			-- Re-Run the bash script init.sh
+	EOF
+	# echo "Error on line ${1}"
+}
+
+app_summary(){
+
+	/usr/bin/cat <<-EOF
+		${0} Tasks Summary:
+		-
+		--	Installed bootstrap dependencies as root
+		-
+		--	Installed Ansible Dependencies as root
+		-	
+		--	Ready to use Ansible to bootstrap the deployer:
+		-
+		--	Run the following command:
+		-	ansible-playbook -k -u "${USER}" ansible_boot_ansible/booter.yaml  --ask-vault-pass
+
 	EOF
 }
+
