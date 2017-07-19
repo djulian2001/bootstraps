@@ -59,7 +59,8 @@ check_env()
 	echo "$?"
 	
 	: "${SSHPASS:?Export SSHPASS with admin password, prepend with a space}"
-	: "${ANSIBLE_VAULT_PASSWORD_FILE:?Export ANSIBLE_VAULT_PASSWORD_FILE with deployer password, prepend with a space}"
+	: "${ANSIBLE_VAULT_PASSWORD:?Export ANSIBLE_VAULT_PASSWORD deployer password, prepend with a space}"
+	: "${ANSIBLE_VAULT_PASSWORD_FILE:?Export ANSIBLE_VAULT_PASSWORD_FILE with deployer password, source init.source}"
 }
 
 check_setup()
@@ -90,6 +91,21 @@ required_dependencies()
 
 ansible_dependencies()
 {
+
+	TARGET_KEY="PasswordAuthentication"
+	REPLACEMENT_VALUE="yes"
+	CONFIG_FILE="/etc/ssh/sshd_config"
+	TEST_CONFIG_SET="${TARGET_KEY} ${REPLACEMENT_VALUE}"
+
+	# /usr/bin/grep '^PasswordAuthentication yes' "/etc/ssh/sshd_config" | grep -v grep
+
+	/bin/echo "${SSHPASS}" | sudo -S /usr/bin/grep '^"${TEST_CONFIG_SET}"' "${CONFIG_FILE}" | grep -v grep
+	if [[ ! "$?" -eq 0 ]] ; then
+		/bin/echo "${SSHPASS}" | sudo -S sed --copy --in-place "s/\($TARGET_KEY * *\).*/\1$REPLACEMENT_VALUE/" $CONFIG_FILE 
+		/bin/echo "${SSHPASS}" | sudo -S service sshd restart
+	fi
+
+
 	# setup and install ansible with pip..
 	echo "INSTALL ansible using pip..."
 	/bin/echo "${SSHPASS}" | sudo -S yum -y install python-pip python-devel openssl-devel.x86_64
@@ -97,6 +113,9 @@ ansible_dependencies()
 	/bin/echo "${SSHPASS}" | sudo -S pip install ansible
 	/bin/echo "${SSHPASS}" | sudo -S pip install --upgrade ansible
 	
+	/bin/echo "${ANSIBLE_VAULT_PASSWORD}" >> "${ANSIBLE_VAULT_PASSWORD_FILE}"
+	/usr/bin/chmod 0440 "${ANSIBLE_VAULT_PASSWORD_FILE}"
+
 	if [[ "$?" -eq 0 ]]; then
 		return 0
 	else
@@ -124,20 +143,20 @@ env_instructions()
 		-
 		--	First source the init.source to set ${0} running enviornment 
 		-		* appends HISTCONTROL enviornment variable to ignorespace
-		-		* appends "StrictHostKeyChecking no" to ~/.ssh/config
+		-		* appends "StrictHostKeyChecking no" to ~/.ssh/config and sets file read only
+		-		* export ANSIBLE_VAULT_PASSWORD_FILE="~/.secret.secret"
+		-			.... password to decrypt ansible vault file in plain text
+		-			.... create the file and add the decrypt pass phrase to it
 		-
-		--	Now prepend ANY commands with sensitive information with a space character
+		--	Prepend ALL commands with sensitive information with a space character
 		-
 		--	Set the following enviornment variables:
 		-		* export SSHPASS="...."
 		-			.... ADMIN accounts password
-		-		* export ANSIBLE_VAULT_PASSWORD_FILE="...."
-		-			.... password to decrypt ansible vault file in plain text
-		-			.... create the file and add the decrypt pass phrase to it
+		-		* export ANSIBLE_VAULT_PASSWORD="...."
+		-			.... Used when a playbook is run to access secrets
 		-		* PREPEND WITH A SPACE
 		-
-		-- Append
-
 	EOF
 	# echo "Error on line ${1}"
 }
@@ -153,8 +172,10 @@ app_summary(){
 		-	
 		--	Ready to use Ansible to bootstrap the deployer:
 		-
-		--	Run the following command:
-		-	ansible-playbook -k -u "${USER}" ansible_boot_ansible/booter.yaml  --ask-vault-pass
+		--	Run the following commands:
+		-	cd ansible_boot_ansible
+		-	ansible-playbook -k -u "${USER}" booter.yaml
+		-		* default user will be ansible
 
 	EOF
 }
