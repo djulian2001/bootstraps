@@ -169,11 +169,27 @@ app_summary(){
 		-	
 		--	Ready to use Ansible to bootstrap the deployer:
 		-
-		--	Run the following commands:
-		-	cd ansible_boot_ansible
+		-	Use the following steps to setup and bootstrap a user onto hosts:
+		-		cd ansible_boot_ansible
+		-
+		-		OPTIONAL STEPS:
+		-		* re-key the vault file to new password
+		-		ansible-vault rekey locker_talk.yaml
+		-			* replace key in ~/.secret.secret with new key
+		-
+		-		* change the deploy_password in vault file ( hashed password required )
+		-		ansible-vault edit locker_talk.yaml
+		-
+		-	* edit the hosts file or copy a replacement into the /dev/hosts file:
+		-	vi ./dev/hosts	
+		-		[compute]     # remote compute nodes list
+		-		[controller]  # in this context, its the ansible controller (max 1)
+		-
 		-	ansible-playbook -k -u "${USER}" booter.yaml
-		-		* default user will be ansible
-
+		-		* default deploy_user is "ansible", over write with -e "deploy_user=new_value"
+		-	
+		-
+		--  If there are any issues please submit an issues request.
 	EOF
 }
 
