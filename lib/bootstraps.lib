@@ -185,9 +185,9 @@ app_summary(){
 		-		[compute]     # remote compute nodes list
 		-		[controller]  # in this context, its the ansible controller (max 1)
 		-
-		-	ansible-playbook -k -u "${USER}" booter.yaml
+		-	ansible-playbook -k -u "CLUSTER_SUDOER_USER" booter.yaml -e "admin_user=ADMIN_ASURITE"
 		-		* default deploy_user is "ansible", over write with -e "deploy_user=new_value"
-		-	
+		-		* CLUSTER_SUDOER_USER is superuser on all hosts
 		-
 		--  If there are any issues please submit an issues request.
 	EOF
