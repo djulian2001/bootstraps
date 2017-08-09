@@ -106,6 +106,10 @@ ansible_dependencies()
 	/bin/echo "${SSHPASS}" | sudo -S pip install --upgrade pip
 	/bin/echo "${SSHPASS}" | sudo -S pip install ansible
 	/bin/echo "${SSHPASS}" | sudo -S pip install --upgrade ansible
+	/bin/echo "${SSHPASS}" | sudo -S pip install virtualenv
+	/bin/echo "${SSHPASS}" | sudo -S pip install --upgrade virtualenv
+	/bin/echo "${SSHPASS}" | sudo -S pip install netaddr
+	/bin/echo "${SSHPASS}" | sudo -S pip install --upgrade netaddr
 	
 	if [[ ! -f "${ANSIBLE_VAULT_PASSWORD_FILE}" ]]; then
 		/usr/bin/touch "${ANSIBLE_VAULT_PASSWORD_FILE}"
@@ -180,7 +184,7 @@ app_summary(){
 		-		* change the deploy_password in vault file ( hashed password required )
 		-		ansible-vault edit locker_talk.yaml
 		-
-		-	* edit the hosts file or copy a replacement into the /dev/hosts file:
+		-	* edit the hosts file or copy a replacement into the ./dev/hosts file:
 		-	vi ./dev/hosts	
 		-		[compute]     # remote compute nodes list
 		-		[controller]  # in this context, its the ansible controller (max 1)
